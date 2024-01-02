@@ -1,0 +1,14 @@
+Hello world from [i2c, SPI]!
+
+Send these ^ messages from Linux/BBB and receive on the assoicated
+interfaces on stm32, and output the message to the LCD!
+
+
+The HAL is needed because the FreeRTOS scheduler requires a timer for ticking and takes over the systick timer for that purpose. (I think) some system peripherals like the onboard debugger require a timer though, and the HAL provides an easy way to initialize a timer:
+
+HAL_TIM_IRQHandler(&htim6);
+
+This avoids a conflict between the scheduler which uses the systick interrupt handler, and other system peripherals that also require a timer
+
+NOTE: there is a device specific header file in Drivers/CMSIS/ST/STM32F4xx/include/stm32f407xx.h. Use that instead of duplicating it, which also seems a bit more professional.
+NOTE2: Add everything to github, but look at excluding the large Debug directory
