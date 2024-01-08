@@ -111,7 +111,7 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
 
 	// 1. Configure the mode of GPIO pin
 
-	if(pGPIOHandle->GPIO_PinConfig.GPIO_PinMode <= GPIO_MODE_ANALOG)
+	if(pGPIOHandle->GPIO_PinConfig.GPIO_PinMode <= GPIO_MODE_ANALOG_)
 	{
 		// Non interrupt mode
 		cfgRegTmp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber ) );

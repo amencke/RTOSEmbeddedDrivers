@@ -179,7 +179,7 @@ g_pfnVectors:
   .word     I2C2_EV_IRQHandler                /* I2C2 Event                   */                          
   .word     I2C2_ER_IRQHandler                /* I2C2 Error                   */                            
   .word     SPI1_IRQHandler                   /* SPI1                         */                   
-  .word     SPI2_IRQHandler                   /* SPI2                         */                   
+  .word     SPI2_IRQHandler                   /* SPI2                         */
   .word     USART1_IRQHandler                 /* USART1                       */                   
   .word     USART2_IRQHandler                 /* USART2                       */                   
   .word     USART3_IRQHandler                 /* USART3                       */                   
@@ -371,8 +371,8 @@ g_pfnVectors:
                            
    .weak      SPI1_IRQHandler            
    .thumb_set SPI1_IRQHandler,Default_Handler
-                        
-   .weak      SPI2_IRQHandler            
+
+   .weak      SPI2_IRQHandler
    .thumb_set SPI2_IRQHandler,Default_Handler
                   
    .weak      USART1_IRQHandler      

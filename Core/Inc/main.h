@@ -32,8 +32,11 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "gpio_driver.h"
+#include "spi_driver.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

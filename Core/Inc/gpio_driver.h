@@ -74,7 +74,7 @@ typedef struct
 #define GPIO_MODE_IN 		0
 #define GPIO_MODE_OUT 		1
 #define GPIO_MODE_ALTFN 	2
-#define GPIO_MODE_ANALOG 	3
+#define GPIO_MODE_ANALOG_ 	3
 #define GPIO_MODE_IT_FT     4 // interrupt triggered on falling edge
 #define GPIO_MODE_IT_RT     5 // interrupt triggered on rising edge
 #define GPIO_MODE_IT_RFT    6 // interrupt triggered on rising and falling edge
@@ -89,10 +89,10 @@ typedef struct
 /*
  * GPIO pin possible output speeds
  */
-#define GPIO_SPEED_LOW			0
-#define GPIO_SPEED_MEDIUM		1
-#define GPIO_SPEED_FAST			2
-#define GPOI_SPEED_HIGH			3
+#define GPIO_SPEED_LOW_				0
+#define GPIO_SPEED_MEDIUM_			1
+#define GPIO_SPEED_FAST_			2
+#define GPOI_SPEED_VFAST_			3
 
 
 /*

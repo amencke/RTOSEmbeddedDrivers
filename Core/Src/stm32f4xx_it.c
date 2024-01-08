@@ -58,7 +58,7 @@
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-
+extern SPI_Handle_t spiISRHandle;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -174,5 +174,10 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+void SPI2_IRQHandler(void)
+{
+	SPI_IRQHandling(&spiISRHandle);
+}
 
 /* USER CODE END 1 */

@@ -13,5 +13,7 @@
 #define ENABLE 		1
 #define DISABLE 	2
 
+#define SPI_TX_MSG_LEN_BYTES 1
+#define SPI_RX_MSG_LEN_BYTES 1
 
 #endif /* INC_MACROS_H_ */

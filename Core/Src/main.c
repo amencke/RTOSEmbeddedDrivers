@@ -43,6 +43,16 @@
 
 /* USER CODE BEGIN PV */
 #define DWT_CTRL 	(volatile uint32_t *)0xE0001000
+#define MAX_LEN 	500
+
+
+#define MAX_LEN 500
+
+char RcvBuff[MAX_LEN] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+
+uint8_t ReadByte;
+
+SPI_Handle_t spiISRHandle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -52,8 +62,13 @@ static void MX_GPIO_Init(void);
 static void led_green_handler(void *parameters);
 static void led_orange_handler(void *parameters);
 static void led_red_handler(void *parameters);
+static void SendDataHandler(void *parameters);
+static void RecvDataHandler(void *parameters);
+static void SPI_GPIOBInit(void);
+static SPI_Handle_t SPI2_Init(void);
+//static void SPI_ISR(void);
 
-extern  void SEGGER_UART_init(uint32_t);
+extern void SEGGER_UART_init(uint32_t);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -68,9 +83,7 @@ extern  void SEGGER_UART_init(uint32_t);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  TaskHandle_t led_green_handle;
-  TaskHandle_t led_red_handle;
-  TaskHandle_t led_orange_handle;
+  TaskHandle_t task_handle;
 
 
   BaseType_t status;
@@ -96,6 +109,12 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
 
+  // Initialize some GPIO B pins for SPI
+  SPI_GPIOBInit();
+  __NVIC_EnableIRQ(SPI2_IRQn); // core_cm4.h, stm32f407xx.h
+  __NVIC_SetPriority(SPI2_IRQn, 0x05); // stm32 uses 4 bits for priority
+//  __NVIC_SetVector(SPI2_IRQn, (uint32_t)&SPI_ISR); // update the NVIC to execute SPI_ISR on SPI interrupts
+
   // Enable the CYCCNT (cycle count) register
   *DWT_CTRL |= (1 << 0);
 
@@ -103,17 +122,14 @@ int main(void)
 
   SEGGER_SYSVIEW_Conf();
 
-  status = xTaskCreate(led_green_handler, "led_green_handler", 200, NULL, 2, &led_green_handle);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(led_red_handler, "led_red_handler", 200, NULL, 2, &led_red_handle);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(led_orange_handler, "led_orange_handler", 200, NULL, 2, &led_orange_handle);
-  configASSERT(status == pdPASS);
+  spiISRHandle = SPI2_Init();
+  spiISRHandle.pSPIx->CR2 |= ( 1 << SPI_CR2_RXNEIE_Pos );
+//  SPI_RecvDataIT(&spiISRHandle, &ReadByte, 1);
+//  status = xTaskCreate(RecvDataHandler, "spi_rx_handler", 200, (void *)&spiISRHandle, 2, &task_handle);
+//  configASSERT(status == pdPASS);
 
   vTaskStartScheduler();
-
+//
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -346,6 +362,27 @@ static void led_red_handler(void *parameters)
 	}
 }
 
+static void SendDataHandler(void *parameters)
+{
+	while (1)
+	{
+		uint32_t len = strlen((const char *)parameters);
+		SPI_SendData(SPI2, (uint8_t *)parameters, len);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
+static void RecvDataHandler(void *parameters)
+{
+	while (1)
+	{
+		// TODO: implement a command to allow master to specify the string length
+		SPI_RecvDataIT((SPI_Handle_t *)parameters, &ReadByte, 1);
+		uint8_t x;
+		(void)x;
+	}
+}
+
 /**
  * \brief Update pinmux settings to mode 5 for the following GPIO pins to use SPI2:
  * 			PB14 -> SPI2 MISO
@@ -354,13 +391,69 @@ static void led_red_handler(void *parameters)
  * 			PB12 -> SPI2 NSS
  *
  */
-static void SPI_GPIOBConfigure(void)
+static void SPI_GPIOBInit(void)
 {
-	// Enable clock for the GPIOB bus
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+	GPIO_Handle_t SPI_GPIOs;
 
-	uint32_t cfgRegTemp = 0x00000000;
+	SPI_GPIOs.pGPIOx = GPIOB;
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_ALTFN;
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinAltFunMode = 5u;
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP; 		// output type is push-pull
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;	// No pull-up/pull-down
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinSpeed = GPOI_SPEED_VFAST_;
+
+	// NSS pin
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_12;
+	GPIO_Init(&SPI_GPIOs);
+
+	// SCLK pin
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_13;
+	GPIO_Init(&SPI_GPIOs);
+
+	// MISO pin
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_14;
+	GPIO_Init(&SPI_GPIOs);
+
+	// MOSI pin
+	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_15;
+	GPIO_Init(&SPI_GPIOs);
 }
+
+static SPI_Handle_t SPI2_Init(void)
+{
+	SPI_Handle_t SPI2Handle;
+	SPI2Handle.pSPIx = SPI2;
+	SPI2Handle.SPIConfig.BusConfig = SPI_BUS_CONFIG_FD;
+	SPI2Handle.SPIConfig.DeviceMode = SPI_SLAVE_MODE;
+	SPI2Handle.SPIConfig.SCLKDiv = SPI_SCLK_SPD_DIV2;
+	SPI2Handle.SPIConfig.DFF = SPI_DFF_8BIT;
+	SPI2Handle.SPIConfig.CPOL = SPI_CPOL_LOW;
+	SPI2Handle.SPIConfig.CPHA = SPI_CPHA_FIRST;
+	SPI2Handle.SPIConfig.SSM = SPI_SSM_EN;
+	SPI2Handle.SPIConfig.SSI = DISABLE; // set SSM to 1 this bit to 0 for software slave select
+
+	SPI2Handle.RxLen = SPI_RX_MSG_LEN_BYTES;
+	SPI2Handle.TxLen = SPI_TX_MSG_LEN_BYTES;
+	SPI2Handle.pRxBuffer = &ReadByte;
+
+	SPI_Init(&SPI2Handle);
+	SPI_PeripheralToggle(SPI2, ENABLE);
+	return SPI2Handle;
+}
+
+__attribute__((weak)) void SPI_ApplicationEventCallback(SPI_Handle_t *pSPIHandle, uint8_t AppEv)
+{
+
+	static uint32_t i = 0;
+	if(AppEv == SPI_EVENT_RX_CMPLT)
+	{
+		RcvBuff[i++] = ReadByte;
+		if(ReadByte == '\0' || ( i == MAX_LEN)){
+			RcvBuff[i-1] = '\0';
+			i = 0;
+		}
+	}}
+
 /* USER CODE END 4 */
 
 /**
