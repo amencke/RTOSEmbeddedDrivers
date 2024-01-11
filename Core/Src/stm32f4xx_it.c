@@ -59,6 +59,7 @@ extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
 extern SPI_Handle_t spiISRHandle;
+extern TaskHandle_t task_handle;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -177,7 +178,12 @@ void TIM6_DAC_IRQHandler(void)
 
 void SPI2_IRQHandler(void)
 {
+	portDISABLE_INTERRUPTS();
+	SEGGER_SYSVIEW_RecordEnterISR();
 	SPI_IRQHandling(&spiISRHandle);
+	xTaskNotifyFromISR(task_handle, 0x01, eSetBits, NULL);
+	SEGGER_SYSVIEW_RecordExitISR();
+	portENABLE_INTERRUPTS();
 }
 
 /* USER CODE END 1 */

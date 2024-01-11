@@ -45,6 +45,9 @@
 #define DWT_CTRL 	(volatile uint32_t *)0xE0001000
 #define MAX_LEN 	500
 
+#define UDG 0 // "user defined graphics"
+char udg[] = { 0x00, 0x00, 0x0a, 0x00, 0x11, 0x0e, 0x00, 0x00 };
+
 
 #define MAX_LEN 500
 
@@ -53,20 +56,19 @@ char RcvBuff[MAX_LEN] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 uint8_t ReadByte;
 
 SPI_Handle_t spiISRHandle;
+HD44780 lcd;
+TaskHandle_t task_handle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-static void led_green_handler(void *parameters);
-static void led_orange_handler(void *parameters);
-static void led_red_handler(void *parameters);
 static void SendDataHandler(void *parameters);
 static void RecvDataHandler(void *parameters);
+static void onSPIDataRecvTask(void *parameters);
 static void SPI_GPIOBInit(void);
 static SPI_Handle_t SPI2_Init(void);
-//static void SPI_ISR(void);
 
 extern void SEGGER_UART_init(uint32_t);
 /* USER CODE END PFP */
@@ -83,16 +85,13 @@ extern void SEGGER_UART_init(uint32_t);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  TaskHandle_t task_handle;
-
-
   BaseType_t status;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-//  HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -124,9 +123,30 @@ int main(void)
 
   spiISRHandle = SPI2_Init();
   spiISRHandle.pSPIx->CR2 |= ( 1 << SPI_CR2_RXNEIE_Pos );
+
 //  SPI_RecvDataIT(&spiISRHandle, &ReadByte, 1);
-//  status = xTaskCreate(RecvDataHandler, "spi_rx_handler", 200, (void *)&spiISRHandle, 2, &task_handle);
-//  configASSERT(status == pdPASS);
+  status = xTaskCreate(onSPIDataRecvTask, "spi_rx_handler", 200, NULL, 2, &task_handle);
+  configASSERT(status == pdPASS);
+
+  lcd.rs_gpio = GPIOE;
+  lcd.rw_gpio = GPIOE;
+  lcd.en_gpio = GPIOE;
+  lcd.d4_gpio = GPIOE;
+  lcd.d5_gpio = GPIOE;
+  lcd.d6_gpio = GPIOE;
+  lcd.d7_gpio = GPIOE;
+  lcd.rs_pin = GPIO_PIN_7;
+  lcd.rw_pin = GPIO_PIN_8;
+  lcd.en_pin = GPIO_PIN_9;
+  lcd.d4_pin = GPIO_PIN_10;
+  lcd.d5_pin = GPIO_PIN_11;
+  lcd.d6_pin = GPIO_PIN_12;
+  lcd.d7_pin = GPIO_PIN_13;
+  lcd.interface_8_bit = false;
+  lcd.single_line = false;
+  lcd.font_5x10 = false;
+
+  HD44780_init(&lcd);
 
   vTaskStartScheduler();
 //
@@ -332,54 +352,26 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void led_green_handler(void *parameters)
-{
-	while (1)
-	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling green LED");
-		HAL_GPIO_TogglePin(GPIOD, LED_GREEN_PIN);
-		vTaskDelay(pdMS_TO_TICKS(1000));
-	}
-}
 
-static void led_orange_handler(void *parameters)
+static void onSPIDataRecvTask(void *parameters)
 {
-	while (1)
+	uint32_t ulNotifiedValue;
+	for ( ;; )
 	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling orange LED");
-		HAL_GPIO_TogglePin(GPIOD, LED_ORANGE_PIN);
-		vTaskDelay(pdMS_TO_TICKS(800));
-	}
-}
+		xTaskNotifyWait(0, 0x00, &ulNotifiedValue, portMAX_DELAY);
 
-static void led_red_handler(void *parameters)
-{
-	while (1)
-	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling red LED");
-		HAL_GPIO_TogglePin(GPIOD, LED_RED_PIN);
-		vTaskDelay(pdMS_TO_TICKS(400));
-	}
-}
-
-static void SendDataHandler(void *parameters)
-{
-	while (1)
-	{
-		uint32_t len = strlen((const char *)parameters);
-		SPI_SendData(SPI2, (uint8_t *)parameters, len);
-		vTaskDelay(pdMS_TO_TICKS(100));
-	}
-}
-
-static void RecvDataHandler(void *parameters)
-{
-	while (1)
-	{
-		// TODO: implement a command to allow master to specify the string length
-		SPI_RecvDataIT((SPI_Handle_t *)parameters, &ReadByte, 1);
-		uint8_t x;
-		(void)x;
+		if (ulNotifiedValue & 0x01)
+		{
+			HD44780_clear(&lcd);
+			HD44780_return_home(&lcd);
+			for (uint8_t i = 1; i <= strlen((const char *)RcvBuff); ++i)
+			{
+				vTaskDelay(pdMS_TO_TICKS(1));
+				HD44780_put_char(&lcd, RcvBuff[i-1]);
+				vTaskDelay(pdMS_TO_TICKS(1));
+				HD44780_cursor_to(&lcd, i % 16, i / 16);
+			}
+		}
 	}
 }
 
@@ -418,6 +410,33 @@ static void SPI_GPIOBInit(void)
 	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_15;
 	GPIO_Init(&SPI_GPIOs);
 }
+
+//static void GPIODInit(void)
+//{
+//	GPIO_Handle_t SPI_GPIOs;
+//
+//	SPI_GPIOs.pGPIOx = GPIOB;
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_OUT;
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP; 		// output type is push-pull
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;	// No pull-up/pull-down
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_MEDIUM_;
+//
+//	// NSS pin
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_12;
+//	GPIO_Init(&SPI_GPIOs);
+//
+//	// SCLK pin
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_13;
+//	GPIO_Init(&SPI_GPIOs);
+//
+//	// MISO pin
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_14;
+//	GPIO_Init(&SPI_GPIOs);
+//
+//	// MOSI pin
+//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_15;
+//	GPIO_Init(&SPI_GPIOs);
+//}
 
 static SPI_Handle_t SPI2_Init(void)
 {

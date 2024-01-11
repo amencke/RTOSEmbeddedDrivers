@@ -34,9 +34,11 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "FreeRTOS.h"
+#include "SEGGER_RTT.h"
 #include "task.h"
 #include "gpio_driver.h"
 #include "spi_driver.h"
+#include "hd44780.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

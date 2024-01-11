@@ -5,6 +5,7 @@
  *      Author: arthurmencke
  */
 #include "spi_driver.h"
+#include "FreeRTOS.h" // purely for ISR tracing
 
 static void  spi_txe_interrupt_handle(SPI_Handle_t *pSPIHandle);
 static void  spi_rxne_interrupt_handle(SPI_Handle_t *pSPIHandle);
