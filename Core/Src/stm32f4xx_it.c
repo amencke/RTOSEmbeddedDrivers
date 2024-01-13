@@ -60,6 +60,7 @@ extern TIM_HandleTypeDef htim6;
 /* USER CODE BEGIN EV */
 extern SPI_Handle_t spiISRHandle;
 extern TaskHandle_t task_handle;
+extern uint8_t rxComplete;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -181,7 +182,11 @@ void SPI2_IRQHandler(void)
 	portDISABLE_INTERRUPTS();
 	SEGGER_SYSVIEW_RecordEnterISR();
 	SPI_IRQHandling(&spiISRHandle);
-	xTaskNotifyFromISR(task_handle, 0x01, eSetBits, NULL);
+	if (rxComplete)
+	{
+		xTaskNotifyFromISR(task_handle, 0x01, eSetBits, NULL);
+		rxComplete = 0;
+	}
 	SEGGER_SYSVIEW_RecordExitISR();
 	portENABLE_INTERRUPTS();
 }

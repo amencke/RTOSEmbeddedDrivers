@@ -308,7 +308,6 @@ static void  spi_rxne_interrupt_handle(SPI_Handle_t *pSPIHandle)
 		//16 bit
 		*((uint16_t*)pSPIHandle->pRxBuffer) = (uint16_t) pSPIHandle->pSPIx->DR;
 		pSPIHandle->RxLen -= 2;
-//		pSPIHandle->pRxBuffer += 2;
 
 	}
 	else
@@ -316,7 +315,6 @@ static void  spi_rxne_interrupt_handle(SPI_Handle_t *pSPIHandle)
 		//8 bit
 		*(pSPIHandle->pRxBuffer) = (uint8_t) pSPIHandle->pSPIx->DR;
 		pSPIHandle->RxLen--;
-//		pSPIHandle->pRxBuffer++;
 	}
 
 	if(! pSPIHandle->RxLen)
@@ -354,8 +352,6 @@ void SPI_CloseTransmisson(SPI_Handle_t *pSPIHandle)
 
 void SPI_CloseReception(SPI_Handle_t *pSPIHandle)
 {
-//	pSPIHandle->pSPIx->CR2 &= ~( 1 << SPI_CR2_RXNEIE_Pos);
-//	pSPIHandle->pRxBuffer = NULL;
 	pSPIHandle->RxLen = SPI_RX_MSG_LEN_BYTES;
 	pSPIHandle->RxState = SPI_READY;
 

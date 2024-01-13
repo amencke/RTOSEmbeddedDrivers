@@ -2129,11 +2129,11 @@ void SEGGER_SYSVIEW_RecordEndCallU32(unsigned int EventID, U32 Para0) {
 *    Record an Idle event.
 */
 void SEGGER_SYSVIEW_OnIdle(void) {
-  U8* pPayloadStart;
-  RECORD_START(SEGGER_SYSVIEW_INFO_SIZE);
-  //
-  _SendPacket(pPayloadStart, pPayloadStart, SYSVIEW_EVTID_IDLE);
-  RECORD_END();
+//  U8* pPayloadStart;
+//  RECORD_START(SEGGER_SYSVIEW_INFO_SIZE);
+//  //
+//  _SendPacket(pPayloadStart, pPayloadStart, SYSVIEW_EVTID_IDLE);
+//  RECORD_END();
 }
 
 /*********************************************************************

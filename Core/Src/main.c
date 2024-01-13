@@ -54,7 +54,7 @@ char udg[] = { 0x00, 0x00, 0x0a, 0x00, 0x11, 0x0e, 0x00, 0x00 };
 char RcvBuff[MAX_LEN] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
 uint8_t ReadByte;
-
+uint8_t rxComplete = 0;
 SPI_Handle_t spiISRHandle;
 HD44780 lcd;
 TaskHandle_t task_handle;
@@ -64,8 +64,6 @@ TaskHandle_t task_handle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-static void SendDataHandler(void *parameters);
-static void RecvDataHandler(void *parameters);
 static void onSPIDataRecvTask(void *parameters);
 static void SPI_GPIOBInit(void);
 static SPI_Handle_t SPI2_Init(void);
@@ -147,6 +145,8 @@ int main(void)
   lcd.font_5x10 = false;
 
   HD44780_init(&lcd);
+
+  HD44780_put_str(&lcd, "TEST!!!");
 
   vTaskStartScheduler();
 //
@@ -371,6 +371,8 @@ static void onSPIDataRecvTask(void *parameters)
 				vTaskDelay(pdMS_TO_TICKS(1));
 				HD44780_cursor_to(&lcd, i % 16, i / 16);
 			}
+			xTaskNotifyStateClear(NULL);
+			ulTaskNotifyValueClear(NULL, 0x01);
 		}
 	}
 }
@@ -411,33 +413,6 @@ static void SPI_GPIOBInit(void)
 	GPIO_Init(&SPI_GPIOs);
 }
 
-//static void GPIODInit(void)
-//{
-//	GPIO_Handle_t SPI_GPIOs;
-//
-//	SPI_GPIOs.pGPIOx = GPIOB;
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_OUT;
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP; 		// output type is push-pull
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;	// No pull-up/pull-down
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_MEDIUM_;
-//
-//	// NSS pin
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_12;
-//	GPIO_Init(&SPI_GPIOs);
-//
-//	// SCLK pin
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_13;
-//	GPIO_Init(&SPI_GPIOs);
-//
-//	// MISO pin
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_14;
-//	GPIO_Init(&SPI_GPIOs);
-//
-//	// MOSI pin
-//	SPI_GPIOs.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_15;
-//	GPIO_Init(&SPI_GPIOs);
-//}
-
 static SPI_Handle_t SPI2_Init(void)
 {
 	SPI_Handle_t SPI2Handle;
@@ -470,6 +445,7 @@ __attribute__((weak)) void SPI_ApplicationEventCallback(SPI_Handle_t *pSPIHandle
 		if(ReadByte == '\0' || ( i == MAX_LEN)){
 			RcvBuff[i-1] = '\0';
 			i = 0;
+			rxComplete = 1;
 		}
 	}}
 
